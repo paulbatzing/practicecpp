@@ -144,6 +144,8 @@ inline void error(const string& s, const string& s2)
 	error(s+s2);
 }
 
+inline void error(const string& s,const string& s2,const string& s3){error(s+s2+s3);}
+
 inline void error(const string& s, int i)
 {
 	ostringstream os;
