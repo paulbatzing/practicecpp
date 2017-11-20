@@ -34,8 +34,9 @@
         Primary !
     Primary:
         Number
-        Name = Expression
         ( Expression )
+        sqrt( Expression )
+        pow( Expression, Expression )
         - Primary
         + Primary
     Number
@@ -54,9 +55,14 @@ const char quit     = 'q';  //t.kind==quit means that t is a quit Token
 const char print    = ';';  //t.kind==print means that t is a print Token
 const char name     = 'n';  //t.kind==name means that t is a name Token
 const char let      = 'L';  //t.kind==L means that t is a declaration Token;
+const char helpl    = 'H';  //t.kind==H means that t is a help token.
+const char powerof  = 'P';  //t.kind==P means that t is a power of token.
+const char squareroot  = 'S';  //t.kind==S means that t is a squareroot of token.
 
 const string declkey = "let";//keyword for declarations
 const string help    = "help";//keyword to print the full helptext
+const string root    = "sqrt";//keyword for the sqrt function
+const string power   = "pow";//keyword for the pow(x,i) function
 
 const string prompt = "> ";
 const string result = "= ";  //used to indicate what follows is a result.
@@ -135,6 +141,7 @@ Token Token_stream::get()
     case '!': 
     case '%':
     case '=':
+    case ',':
         return Token(ch);        // let each character represent itself
     case '.':
     case '0': case '1': case '2': case '3': case '4':
@@ -152,6 +159,10 @@ Token Token_stream::get()
             while(cin.get(ch)&&(isalpha(ch)||isdigit(ch)))s+=ch;
             cin.putback(ch);
             if(s==declkey)return Token{let};
+            if((s==help)||(s=="H")||(s=="h")) return Token{helpl};
+            if((s=="quit")||(s=="Q"))return Token{quit};
+            if(s==power)return Token{powerof};
+            if(s==root)return Token{squareroot};
             return Token{name, s};
         }
         cout <<"\n"<< ch << "\n";
@@ -173,6 +184,7 @@ void Token_stream::ignore(char c) //c represents the token where everything is f
     {
         if(ch==c)return;
     }
+    return;
 }
 
 
@@ -214,6 +226,23 @@ double define_name(string var, double val)//add {var,val} to var_table
 
 //========================================
 
+void welcome(){
+    cout << " Welcome to our simple calculator.\n"
+    << " Please end a calculation with "<<print<<" to print the result to the screen.\n"
+    << " To exit the calculator, please press "<<quit<<".\n"
+    << " For a full helptext enter "<<help<<".\n";
+}
+
+void helpf(){
+    cout << " Please enter expressions using floating-point numbers.\n"
+    << " The operations +,-,*, /,% and ! are supported.\n"
+    << " The functions sqrt( float) and pow(float,int) are supported.\n"
+    << " (,),{ and } are supported as delimiters.\n"
+    << " % returns the floating point reminder, while ! is only defined for integers.\n"
+    << " Please end a calculation with "<<print<<" to print the result to the screen.\n"
+    << " To exit the calculator, please press "<<quit<<".\n";
+}
+
 //Grammar parser:
 double expression();    // declaration so that primary() can call expression()
 
@@ -241,6 +270,39 @@ double primary()// deal with numbers and parentheses
                 if (t.kind != '}') error("'}' expected");
                 return d;
             }
+        case squareroot://handle sqrt '(' expression ')'
+            {
+                t = ts.get();
+                char closechar = ' ';
+                if(t.kind=='(')closechar=')';
+                else if(t.kind=='{')closechar='}';
+                else error("sqrt: delimiter expected");
+                
+                double d = expression();
+                t = ts.get();
+                if(!(t.kind==closechar))error("sqrt: missing ",closechar);
+                if(d<0)error("sqrt: Only defined for positive floats.");
+                return sqrt(d);
+                
+            }
+        case powerof://handle sqrt '(' expression ')'
+            {
+                t = ts.get();
+                char closechar = ' ';
+                if(t.kind=='(')closechar=')';
+                else if(t.kind=='{')closechar='}';
+                else error("pow: delimiter expected");
+                
+                double d = expression();
+                t = ts.get();
+                if(!t.kind==',')error("pow: delimiter ',' needed between the float and the integer.");
+                int i = narrow_cast<int>(expression());//i needs to be an integer
+                if(!(t.kind==closechar))error("pow: missing "+closechar);
+                if(d<0)error("sqrt: Only defined for positive floats.");
+                double res = 1;
+                for(int j=1;j<=i;++j)res*=d;
+                return d;            
+            }            
         case number:            
             return t.value;  // return the number's value
         case name:
@@ -394,42 +456,28 @@ void calculate()
     while(cin){
         try{
             
-            if(printprompt)cout << prompt;
+            if(true)cout << prompt;
             
             Token t = ts.get();
             while(t.kind==print){t=ts.get();printprompt=true;} //first discard all prints;
             if(t.kind==quit)return;
+            if(t.kind==helpl){helpf();t=ts.get();}
             ts.putback(t);
             cout << result<<statement()<<'\n';
             printprompt = false;
             while(t.kind==print){t=ts.get();printprompt=true;} 
-//             t = ts.get();
-//             if(!t.kind==print)error("Please finish your expressions with ",print);
+
         }
         catch(exception& e){
             cerr<< e.what() <<'\n';
             clean_up_mess();
+            printprompt==true;
         }
     }
 }
 //=======================================
 
-void welcome(){
-    cout << " Welcome to our simple calculator.\n"
-    << " Please end a calculation with "<<print<<" to print the result to the screen.\n"
-    << " To exit the calculator, please press "<<quit<<".\n"
-    << " For a full helptext enter "<<help".\n";
-}
 
-void helpf(){
-        cout << " Welcome to our simple calculator.\n"
-    << " Please enter expressions using floating-point numbers.\n"
-    << " The operations +,-,*, /,% and ! are supported.\n"
-    << " (,),{ and } are supported as delimiters.\n"
-    << " % returns the floating point reminder, while ! is only defined for integers.\n"
-    << " Please end a calculation with "<<print<<" to print the result to the screen.\n"
-    << " To exit the calculator, please press "<<quit<<".\n";
-}
 int main()
 {
     try{   
